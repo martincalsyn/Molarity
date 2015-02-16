@@ -1,5 +1,4 @@
-# Oasis
-Oasis Automation Services
+# Oasis Automation Services
 
 Oasis is a distributed services architecture for applications like home automation and perhaps robotics.
 
@@ -11,7 +10,9 @@ Oasis is a distributed services architecture for applications like home automati
 
 ## Status
 
-Nothing works. Extremely early days here. Mostly just working out core protocol and service design elements.
+Nothing works. Really. There is nothing useful here yet.
+It is extremely early days here. I am mostly just working out infrastructure and platform abstraction issues and designing the core protocol and service elements. 
+It may never get past that stage, because I do have a day job and a short attention span.
 
 ## Example services
 
@@ -45,8 +46,9 @@ Nothing works. Extremely early days here. Mostly just working out core protocol 
 1. Miscelaneous
   * Infrastructure services (discovery, security and peer management)
   * Media manager
+  * SIP communication bridge and endpoint communication services
   * Local cloud (local controller for coordinating LAN access to services)
-  * Cloud services (for managing out-of-the-home/WAN access to services)
+  * Cloud services (for facilitating out-of-the-home/WAN access to services)
   * Proxy services (for managing IoT devices via bluetooth/Xbee where those devices do not have a TCP stack or cannot host services)
 
 ## Other nifty design elements
@@ -69,6 +71,7 @@ My main interest now is in home automation and lifestyle automation in a truly c
 ## Why C# ?
 The choice of C# for me was an easy one. I have deep experience with C# and more importantly, with Mono and Xamarin, it runs everywhere
 that I might care to have my Oasis services running.  That includes:
+
 1. All modern versions and flavors of Windows 
   * Windows 7 and 8 desktop, server, and immersive apps
   * Window 8 phone (WPA profile)
