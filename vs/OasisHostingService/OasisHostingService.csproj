@@ -83,6 +83,7 @@
     </Compile>
     <Compile Include="..\..\src\OasisHostingService\Service1.Designer.cs">
       <Link>Service1.Designer.cs</Link>
+      <DependentUpon>Service1.cs</DependentUpon>
     </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
