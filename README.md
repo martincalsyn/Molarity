@@ -26,6 +26,7 @@ It may never get past that stage, because I do have a day job and a short attent
   * Weather forecast retrieval
   * Calendar observer
   * Location detection services (where are you and where are you likely going? Should I warm up the house?)
+  * Presence and attention detection (who is where and what are they paying attention to?)
 1. Control Endpoints
   * TV remote
   * Thermostat
@@ -51,13 +52,22 @@ It may never get past that stage, because I do have a day job and a short attent
   * Cloud services (for facilitating out-of-the-home/WAN access to services)
   * Proxy services (for managing IoT devices via bluetooth/Xbee where those devices do not have a TCP stack or cannot host services)
 
-## Other nifty design elements
+## Other design challenges that I want to tackle
+
+### Attention modeling
+Say you received an email or text message. Or, say your house is on fire. What is the best way to notify you given the characteristics of
+the message, your current activity, and the devices that Oasis could possibly use to notify you? Should the notification even be shown now, or can it wait until the
+end of the movie you are watching? And where do we draw the line between automatically learned behaviors and user-set preferences?
 
 ### Knock to pair
 Pairing security is difficult to manage at best. It ends up either being insecure or baffling to the end user (or both). I intend to use
 a knock-to-pair mechanism where you tap a switch or physically knock in a rhythmic pattern on the local controller or perhaps any already paired device, and then tap/knock that
 same pattern into the unpaired device. If the patterns match, a key exchange will take place to bring the new device into the network.
 A similar knock-to-unpair protocol might be employed to add a level of theft deterrence. This still needs refinement, but this is my starting point for pairing.
+
+### Pervasiveness
+Oasis should be in the home in audio, video, haptics, etc. Oasis should be in the car. It should be on my computer, phone, and tablet wherever I am. But all
+good infrastructure is invisible, and Oasis should be invisible too, except when I need it.
 
 ## Wait, don't I know you?
 Maybe. I was an architect and developer on the original Microsoft Robotics Development Studio suite and I am still a
