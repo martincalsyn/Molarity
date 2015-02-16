@@ -1,6 +1,6 @@
 # Oasis Automation Services
 
-Oasis is a distributed services architecture for applications like home automation and perhaps robotics.
+Oasis is a distributed services architecture for home/lifestyle automation
 
 ## Goals
   * A distributed service architecture that uses one code model for services across all target platforms and OS's
