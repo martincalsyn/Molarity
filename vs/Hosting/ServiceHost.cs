@@ -67,8 +67,13 @@ namespace OasisAutomation.Hosting
         public void Start()
         {
             // Create the udp rendezvous channel
+#if __MonoCS__
+            _udpClient = new UdpClient(_udpPort, AddressFamily.InterNetwork);
+            _groupAddress = IPAddress.Parse("239.0.0.222");
+#else
             _udpClient = new UdpClient(_udpPort, AddressFamily.InterNetworkV6);
             _groupAddress = IPAddress.Parse("FF01::1");
+#endif
             _udpClient.JoinMulticastGroup(_groupAddress);
             _groupEndpoint = new IPEndPoint(_groupAddress, _udpPort);
 
