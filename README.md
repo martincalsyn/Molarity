@@ -66,7 +66,7 @@ same pattern into the unpaired device. If the patterns match, a key exchange wil
 A similar knock-to-unpair protocol might be employed to add a level of theft deterrence. This still needs refinement, but this is my starting point for pairing.
 
 ### Pervasiveness
-Oasis should be in the home in audio, video, haptics, etc. Oasis should be in the car. It should be on my computer, phone, and tablet wherever I am. But all
+Oasis should be in the home in audio, video, haptics, etc. Oasis should be in the car. It should be on my computer, phone, tablet, and wearables wherever I am. But all
 good infrastructure is invisible, and Oasis should be invisible too, except when I need it.
 
 ## Wait, don't I know you?
@@ -86,17 +86,18 @@ that I might care to have my Oasis services running.  That includes:
   * Windows 7 and 8 desktop, server, and immersive apps
   * Window 8 phone (WPA profile)
   * Windows 10 desktop, server, immersive and phone (universal apps)
+1. All modern versions of OSX supporting Mono
+1. All modern versions of Linux supporting Mono
 1. IoT-scale devices like 
   * Raspberry Pi running Linux (Mono)
   * Raspberry Pi 2 running Windows 10
   * and even STM32 chips via .Net Micro Framework for things like wearable devices
-1. All modern versions of Linux supporting Mono
 1. Mobile devices via Xamarin, including:
   * iOS
   * Android
   * Android Wear
   * pretty much anything else that Xamarin supports
-1. Cloud services
+1. Cloud services on all major providers
 
 This is a broader reach than I can achieve with java and although I could achieve the same reach with C/C++ it would require significantly more effort in the form of per-platform adaptations. 
 My task is made a lot simpler because I know I have a well-defined set of class libraries on every target platform and that those libraries take care of most of the platform adaptations I care about. 
