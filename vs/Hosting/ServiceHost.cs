@@ -94,7 +94,13 @@ namespace OasisAutomation.Hosting
                 {
                     if (addr.Address.AddressFamily == AddressFamily.InterNetwork || addr.Address.AddressFamily == AddressFamily.InterNetworkV6)
                     {
-                        if (!addr.IsDnsEligible || addr.Address.IsIPv4MappedToIPv6 || addr.Address.IsIPv6LinkLocal || addr.Address.IsIPv6Multicast)
+                        if (!addr.IsDnsEligible 
+                            || addr.Address.IsIPv6LinkLocal 
+                            || addr.Address.IsIPv6Multicast
+#if !__MonoCS__
+                            || addr.Address.IsIPv4MappedToIPv6
+#endif
+                            )
                             continue;
                         candidates.Add(string.Format("http://{0}:{1}/", addr.Address, _httpPort));
                     }
