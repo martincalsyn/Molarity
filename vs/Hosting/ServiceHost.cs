@@ -109,13 +109,14 @@ namespace OasisAutomation.Hosting
                         else
                         {
                             continue;
-                            var localEndpoint = new IPEndPoint(addr.Address, _udpPort);
-                            annIf.Client.Client.Bind(localEndpoint);
-                            annIf.GroupAddress = IPAddress.Parse("FF01::1");
+                            //var localEndpoint = new IPEndPoint(addr.Address, _udpPort);
+                            //annIf.Client.Client.Bind(localEndpoint);
+                            //annIf.GroupAddress = IPAddress.Parse("FF01::1");
                         }
                         annIf.Client.MulticastLoopback = false;
                         annIf.Client.JoinMulticastGroup(annIf.GroupAddress, addr.Address);
                         annIf.GroupEndpoint = new IPEndPoint(annIf.GroupAddress, _udpPort);
+                        Console.WriteLine("Adding announcement address " + annIf.Address);
                         _announcementIfs.Add(annIf);
                     }
                 }
