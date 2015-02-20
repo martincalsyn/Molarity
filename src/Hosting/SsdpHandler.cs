@@ -140,8 +140,28 @@ namespace Molarity.Hosting
             }
             NotifyAll();
         }
+
+        internal void UnregisterService(Guid id)
+        {
+            SsdpService service;
+            if (!_services.TryGetValue(id, out service))
+            {
+                return;
+            }
+            _services.Remove(id);
+            foreach (var intf in _interfaces)
+            {
+                foreach (var d in _services.Values)
+                {
+                    NotifyService(intf, d, "byebye", true);
+                }
+            }
+        }
         private void NotificationTimerOnElapsed(object sender, ElapsedEventArgs elapsedEventArgs)
         {
+            Console.WriteLine("Sending SSDP notifications");
+            _notificationTimer.Interval = _random.Next(60000, 120000);
+            NotifyAll();
         }
 
         private void NotifyAll()
@@ -227,6 +247,10 @@ namespace Molarity.Hosting
                     {
                         RespondToSearch(intf, remoteEp, headers["st"]);
                     }
+                    if (method == "NOTIFY")
+                    {
+                        HandleNotify(intf, remoteEp, headers);
+                    }
                 }
             }
         }
@@ -300,6 +324,12 @@ namespace Molarity.Hosting
                     SendSearchResponse(intf, ep, service, searchTerm);
                 }
             }
+        }
+
+
+        private void HandleNotify(AnnouncementInterface intf, IPEndPoint remoteEp, Headers headers)
+        {
+
         }
 
         private void SendSearchResponse(AnnouncementInterface intf, IPEndPoint endpoint, SsdpService service, string serviceType)

@@ -66,9 +66,7 @@ namespace Molarity.Hosting
             _ssdp = new SsdpHandler();
             Guid id = Guid.NewGuid();
             _ssdp.RegisterService(id, "http://{0}:7000/Directory/upnp",
-                "upnp:rootdevice",
-                "urn:molarity:directory",
-                "uuid:" + id.ToString());
+                "urn:molarity:directory");
 
             // Create the http channel
             _httpListener = new HttpListener();
