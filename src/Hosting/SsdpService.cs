@@ -11,7 +11,7 @@ namespace Molarity.Hosting
     {
         private readonly HashSet<string> _serviceTypes = new HashSet<string>();
 
-        public SsdpService(Guid uuid, Uri location, IPAddress address, IEnumerable<string> serviceTypes)
+        public SsdpService(Guid uuid, string location, IEnumerable<string> serviceTypes)
         {
             Uuid = uuid;
             foreach (var s in serviceTypes)
@@ -29,13 +29,14 @@ namespace Molarity.Hosting
                 _serviceTypes.Add(s);
             }
             Location = location;
-            Address = address;
-
         }
-
-        public IPAddress Address { get; set; }
         public HashSet<string> ServiceTypes { get { return _serviceTypes;  } }
-        public Uri Location { get; set; }
+        public string Location { get; set; }
+
+        public string GetLocation(AnnouncementInterface intf)
+        {
+            return string.Format(this.Location, intf.Address.ToString());
+        }
         public string Usn { get; set; }
         public Guid Uuid { get; set; }
     }

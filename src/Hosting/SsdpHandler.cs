@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
@@ -15,6 +16,18 @@ using Timer = System.Timers.Timer;
 
 namespace Molarity.Hosting
 {
+    class AnnouncementInterface
+    {
+        public IPAddress Address { get; set; }
+        public UdpClient Client { get; set; }
+
+        public async Task<Tuple<AnnouncementInterface, UdpReceiveResult>> ReceiveAsync()
+        {
+            var udpResult = await this.Client.ReceiveAsync();
+            return new Tuple<AnnouncementInterface, UdpReceiveResult>(this, udpResult);
+        }
+    }
+
     internal class SsdpHandler : IDisposable
     {
         private const int DatagramsPerMessage = 2;
@@ -29,21 +42,24 @@ namespace Molarity.Hosting
 
         private readonly UdpClient _client = new UdpClient();
         private readonly Timer _notificationTimer = new Timer(60000);
-        private readonly Timer _sendTimer = new Timer(1000);
         private readonly Dictionary<Guid, SsdpService> _services = new Dictionary<Guid, SsdpService>();
         private readonly ConcurrentQueue<Datagram> _messageQueue = new ConcurrentQueue<Datagram>();
         private readonly CancellationTokenSource _ctsource = new CancellationTokenSource();
-        private Task _processQueueTask;
+        private readonly Task _processQueueTask;
+        private readonly List<AnnouncementInterface> _interfaces = new List<AnnouncementInterface>();
         public SsdpHandler()
         {
+            PopulateInterfaceList();
+
             _notificationTimer.Elapsed += NotificationTimerOnElapsed;
             _notificationTimer.Enabled = true;
-            _sendTimer.Elapsed += SendTimerOnElapsed;
+            _client.MulticastLoopback = false;
             _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _client.ExclusiveAddressUse = false;
             _client.Client.Bind(new IPEndPoint(IPAddress.Any, SSDP_PORT));
             _client.JoinMulticastGroup(SsdpAddress, 2);
 
+            _processQueueTask = ProcessQueue(_ctsource.Token);
             Receive();
         }
 
@@ -53,53 +69,100 @@ namespace Molarity.Hosting
             // Request cancellation
             _ctsource.Cancel();
             // Wait for the queue to drain
-            if (_processQueueTask!=null)
+            if (_processQueueTask != null)
                 _processQueueTask.Wait();
-            _sendTimer.Enabled = false;
             // Sign off
+            foreach (var annIf in _interfaces)
+            {
+                if (annIf.Client != null)
+                {
+                    annIf.Client.DropMulticastGroup(SsdpAddress);
+                }
+            }
             _client.DropMulticastGroup(SsdpAddress);
             _notificationTimer.Dispose();
-            _sendTimer.Dispose();
         }
 
-        public void RegisterService(Guid id, Uri location, IPAddress addr, params string[] serviceTypes)
+        private void PopulateInterfaceList()
+        {
+            var nics = NetworkInterface.GetAllNetworkInterfaces();
+            _interfaces.Clear();
+            foreach (var nic in nics)
+            {
+                foreach (var addr in nic.GetIPProperties().UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork ||
+                        addr.Address.AddressFamily == AddressFamily.InterNetworkV6)
+                    {
+                        if (!addr.IsDnsEligible
+                            || IPAddress.IsLoopback(addr.Address)
+                            || addr.Address.IsIPv6LinkLocal
+#if !__MonoCS__
+                            // This is not defined for Mono
+                            || addr.Address.IsIPv4MappedToIPv6
+#endif
+                            )
+                        {
+                            continue;
+                        }
+                        var annIf = new AnnouncementInterface()
+                        {
+                            Address = addr.Address,
+                            Client = new UdpClient()
+                        };
+                        annIf.Client.ExclusiveAddressUse = false;
+                        annIf.Client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress,
+                            true);
+                        if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            var localEndpoint = new IPEndPoint(addr.Address, SSDP_PORT);
+                            annIf.Client.Client.Bind(localEndpoint);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                        annIf.Client.MulticastLoopback = false;
+                        annIf.Client.JoinMulticastGroup(SsdpAddress, addr.Address);
+                        Console.WriteLine("Adding UPnP announcement interface on " + annIf.Address);
+                        _interfaces.Add(annIf);
+                    }
+                }
+            }
+        }
+        public void RegisterService(Guid id, string location, params string[] serviceTypes)
         {
             SsdpService service;
             if (!_services.TryGetValue(id, out service))
             {
-                service = new SsdpService(id, location, addr, serviceTypes);
+                service = new SsdpService(id, location, serviceTypes);
                 _services.Add(id, service);
             }
             NotifyAll();
         }
-        private void SendTimerOnElapsed(object sender, ElapsedEventArgs elapsedEventArgs)
-        {
-            if (_ctsource.IsCancellationRequested)
-                return;
-
-            _processQueueTask = ProcessQueue(_ctsource.Token);
-        }
-
         private void NotificationTimerOnElapsed(object sender, ElapsedEventArgs elapsedEventArgs)
         {
         }
 
-        internal void NotifyAll()
+        private void NotifyAll()
         {
-            foreach (var d in _services.Values)
+            foreach (var intf in _interfaces)
             {
-                NotifyService(d, "alive", false);
+                foreach (var d in _services.Values)
+                {
+                    NotifyService(intf, d, "alive", false);
+                }
             }
         }
 
-        internal void NotifyService(SsdpService service, string notificationSubtype, bool persistent)
+        private void NotifyService(AnnouncementInterface intf, SsdpService service, string notificationSubtype, bool persistent)
         {
             foreach (var type in service.ServiceTypes)
             {
                 var headers = new Headers();
                 headers.Add("HOST", "239.255.255.250:1900");
                 headers.Add("CACHE-CONTROL", "max-age = 600");
-                headers.Add("LOCATION", service.Location.AbsoluteUri);
+                headers.Add("LOCATION", service.GetLocation(intf));
                 headers.Add("SERVER", SsdpHandler.Signature);
                 headers.Add("NTS", "ssdp:" + notificationSubtype);
                 headers.Add("NT", type);
@@ -107,61 +170,62 @@ namespace Molarity.Hosting
 
                 SendDatagram(
                     SsdpEndpoint,
-                    service.Address,
+                    intf.Address,
                     String.Format("NOTIFY * HTTP/1.1\r\n{0}\r\n", headers.ToString()),
                     persistent
                     );
             }
         }
+
         private async void Receive()
         {
+            var tasks = _interfaces.Select(annIf => annIf.ReceiveAsync()).ToList();
             while (true)
             {
-                UdpReceiveResult? udpResult = null;
-                try
-                {
-                    udpResult = await _client.ReceiveAsync();
-                }
-                catch (ObjectDisposedException)
-                {
-                    udpResult = null;
-                }
-                if (!udpResult.HasValue)
-                    continue;
+                var fired = await Task.WhenAny(tasks);
+                tasks.Remove(fired);
+                var result = fired.Result;
+                Console.WriteLine("Data received from " + result.Item2.RemoteEndPoint);
+                ProcessReceivedMessage(result.Item1, result.Item2);
+                var task = result.Item1.ReceiveAsync();
+                tasks.Add(task);
+            }
+        }
 
-                var remoteEp = udpResult.Value.RemoteEndPoint;
-                var receivedData = udpResult.Value.Buffer;
-                if (receivedData == null || receivedData.Length == 0)
-                    continue;
+        private async void ProcessReceivedMessage(AnnouncementInterface intf, UdpReceiveResult udpResult)
+        {
+            var remoteEp = udpResult.RemoteEndPoint;
+            var receivedData = udpResult.Buffer;
+            if (receivedData == null || receivedData.Length == 0)
+                return;
 
-                using (var reader = new StreamReader(
-                    new MemoryStream(receivedData), Encoding.ASCII))
+            using (var reader = new StreamReader(
+                new MemoryStream(receivedData), Encoding.ASCII))
+            {
+                var line = reader.ReadLine();
+                if (!string.IsNullOrEmpty(line))
                 {
-                    var line = reader.ReadLine();
-                    if (!string.IsNullOrEmpty(line))
+                    line = line.Trim();
+                    if (string.IsNullOrEmpty(line))
+                    {
+                        return;
+                    }
+                    var method = line.Split(new[] {' '}, 2)[0];
+                    var headers = new Headers();
+                    for (line = reader.ReadLine(); line != null; line = reader.ReadLine())
                     {
                         line = line.Trim();
                         if (string.IsNullOrEmpty(line))
                         {
-                            continue;
+                            break;
                         }
-                        var method = line.Split(new[] {' '}, 2)[0];
-                        var headers = new Headers();
-                        for (line = reader.ReadLine(); line != null; line = reader.ReadLine())
-                        {
-                            line = line.Trim();
-                            if (string.IsNullOrEmpty(line))
-                            {
-                                break;
-                            }
-                            var parts = line.Split(new[] {':'}, 2);
-                            headers[parts[0]] = parts[1].Trim();
-                        }
-                        Debug.WriteLine("{0} - Datagram method: {1}", remoteEp, method);
-                        if (method == "M-SEARCH")
-                        {
-                            RespondToSearch(remoteEp, headers["st"]);
-                        }
+                        var parts = line.Split(new[] {':'}, 2);
+                        headers[parts[0]] = parts[1].Trim();
+                    }
+                    Console.WriteLine("{0} - Datagram method: {1}", remoteEp, method);
+                    if (method == "M-SEARCH")
+                    {
+                        RespondToSearch(intf, remoteEp, headers["st"]);
                     }
                 }
             }
@@ -169,34 +233,50 @@ namespace Molarity.Hosting
 
         private async Task ProcessQueue(CancellationToken ct)
         {
-            Console.WriteLine("start");
-            while (_messageQueue.Count != 0)
+            while (true)
             {
-                Datagram msg;
-                if (!_messageQueue.TryPeek(out msg))
+                try
                 {
-                    continue;
-                }
-                if (msg != null && (!ct.IsCancellationRequested || msg.Persistent))
-                {
-                    msg.Send();
-                    if (msg.SendCount > DatagramsPerMessage)
+                    while (_messageQueue.Count != 0)
                     {
-                        _messageQueue.TryDequeue(out msg);
+                        Datagram msg;
+                        if (!_messageQueue.TryPeek(out msg))
+                        {
+                            continue;
+                        }
+                        // We must drain queue of persistent messages before exiting
+                        // Persistent messages have to complete their send count before we can exit
+                        if (msg != null && (!ct.IsCancellationRequested || msg.Persistent))
+                        {
+                            await msg.Send();
+                            if (msg.SendCount > DatagramsPerMessage)
+                            {
+                                _messageQueue.TryDequeue(out msg);
+                            }
+                            break;
+                        }
+                        else
+                        {
+                            _messageQueue.TryDequeue(out msg);
+                        }
                     }
-                    break;
+                    if (ct.IsCancellationRequested)
+                        break;
+                    // randomize the resend interval
+                    var delay = _random.Next(50, 300);
+                    await Task.Delay(delay, ct);
+                    if (ct.IsCancellationRequested)
+                        break;
                 }
-                else
+                catch (Exception)
                 {
-                    _messageQueue.TryDequeue(out msg);
+                    //TODO: report error, but don't rethrow - this loop needs to continue running
                 }
             }
-            _sendTimer.Enabled = _messageQueue.Count != 0;
-            _sendTimer.Interval = _random.Next(50, !ct.IsCancellationRequested ? 300 : 100);
-            Console.WriteLine("stop");
+            //TODO: log termination
         }
 
-        private void RespondToSearch(IPEndPoint ep, string searchTerm)
+        private void RespondToSearch(AnnouncementInterface intf, IPEndPoint ep, string searchTerm)
         {
             Console.WriteLine("SSDP Search for {0} from {1}", searchTerm, ep);
             if (searchTerm == "ssdp:all")
@@ -212,29 +292,29 @@ namespace Molarity.Hosting
                     // Give them everything
                     foreach (var serviceType in service.ServiceTypes)
                     {
-                        SendSearchResponse(ep, service, serviceType);
+                        SendSearchResponse(intf, ep, service, serviceType);
                     }
                 }
                 else if (service.ServiceTypes.Contains(searchTerm))
                 {
-                    SendSearchResponse(ep, service, searchTerm);
+                    SendSearchResponse(intf, ep, service, searchTerm);
                 }
             }
         }
 
-        private void SendSearchResponse(IPEndPoint endpoint, SsdpService service, string serviceType)
+        private void SendSearchResponse(AnnouncementInterface intf, IPEndPoint endpoint, SsdpService service, string serviceType)
         {
             var headers = new Headers();
             headers.Add("CACHE-CONTROL", "max-age = 600");
             headers.Add("DATE", DateTime.Now.ToString("R"));
             headers.Add("EXT", string.Empty);
-            headers.Add("LOCATION", service.Location.ToString());
+            headers.Add("LOCATION", service.GetLocation(intf));
             headers.Add("ST", serviceType);
             headers.Add("USN", service.Usn);
 
             SendDatagram(
               endpoint,
-              service.Address,
+              intf.Address,
               String.Format("HTTP/1.1 200 OK\r\n{0}\r\n", headers.ToString()),
               false
               );
@@ -250,12 +330,7 @@ namespace Molarity.Hosting
                 return;
 
             var dgram = new Datagram(endpoint, address, message, persistent);
-            if (_messageQueue.Count == 0)
-            {
-                dgram.Send();
-            }
             _messageQueue.Enqueue(dgram);
-            _sendTimer.Enabled = true;
         }
 
         private static string _sig;
@@ -284,15 +359,14 @@ namespace Molarity.Hosting
                 default:
                     break;
             }
-            return String.Format(
-            "{0}{1}/{2}.{3} UPnP/2.0 OAS/1.0 molarity{4}.{5}",  //OAS is Oasis Automation Services
-            pstring,
-            IntPtr.Size * 8,
-            os.Version.Major,
-            os.Version.Minor,
-            Assembly.GetExecutingAssembly().GetName().Version.Major,
-            Assembly.GetExecutingAssembly().GetName().Version.Minor
-            );
+            return String.Format("{0}{1}/{2}.{3} UPnP/2.0 OAS/1.0 molarity{4}.{5}", //OAS is Oasis Automation Services
+                pstring,
+                IntPtr.Size*8,
+                os.Version.Major,
+                os.Version.Minor,
+                Assembly.GetExecutingAssembly().GetName().Version.Major,
+                Assembly.GetExecutingAssembly().GetName().Version.Minor
+                );
         }
 
     }

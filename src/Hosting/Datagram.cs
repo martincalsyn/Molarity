@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -20,7 +21,7 @@ namespace Molarity.Hosting
             this.Persistent = persistent;
         }
 
-        public async void Send()
+        public async Task Send()
         {
             var msg = Encoding.ASCII.GetBytes(this.Message);
             try
@@ -56,6 +57,7 @@ namespace Molarity.Hosting
                 //Error(ex);
             }
             ++SendCount;
+            Console.WriteLine("Send Count : {0}", SendCount);
         }
         public IPEndPoint EndPoint { get; private set; }
 
