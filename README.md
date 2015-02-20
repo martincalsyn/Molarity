@@ -1,17 +1,30 @@
-# Oasis Automation Services
+# Molarity Automation Services
 
-Oasis is a distributed services architecture for home/lifestyle automation
+Molarity is a distributed services architecture for home/lifestyle automation.
+Molarity works on a wide variety of devices from IoT through cloud, including
+
+  * NETMF devices in general (and the Molecule devices in particular) 
+  * Raspberry Pi (all versions)
+  * Windows PCs, tablets and phones
+  * iOS devices
+  * Android devices
+  * Cloud services (including the Molarity Proxy Service)
+
+## The Name
+Well, that will become clear down the road a bit. Suffice to say that Molarity refers to the relative concentration of various molecules in any compound or solution
+but not all of the Molecules are public yet.
 
 ## Goals
-  * A distributed service architecture that uses one code model for services across all target platforms and OS's
-  * Services that are distributed, composable and inspectable
+  * A distributed service architecture that uses one code base for services across all target platforms and OS's
+  * Services that are distributed, composable and inspectable and inherently fault-tolerant
+  * A model for service discovery, description and interaction
   * A model for defining static and dynamic service relationships
-  * Concrete hardware and services for display endpoints, control endpoints, sensing endpoints, actuators
+  * Concrete hardware and services for display endpoints, control endpoints, sensing endpoints, actuator endpoints, and service endpoints
 
 ## Status
 
 Nothing works. Really. There is nothing useful here yet.
-It is extremely early days here. I am mostly just working out infrastructure and platform abstraction issues and designing the core protocol and service elements. 
+It is extremely early days. I am mostly just working out infrastructure and platform abstraction issues and designing the core protocol and service elements. 
 It may never get past that stage, because I do have a day job and a short attention span.
 
 ## Example services
@@ -56,7 +69,7 @@ It may never get past that stage, because I do have a day job and a short attent
 
 ### Attention modeling
 Say you received an email or text message. Or, say your house is on fire. What is the best way to notify you given the characteristics of
-the message, your current activity, and the devices that Oasis could possibly use to notify you? Should the notification even be shown now, or can it wait until the
+the message, your current activity, and the devices that Molarity could possibly use to notify you? Should the notification even be shown now, or can it wait until the
 end of the movie you are watching? And where do we draw the line between automatically learned behaviors and user-set preferences?
 
 ### Knock to pair
@@ -66,8 +79,8 @@ same pattern into the unpaired device. If the patterns match, a key exchange wil
 A similar knock-to-unpair protocol might be employed to add a level of theft deterrence. This still needs refinement, but this is my starting point for pairing.
 
 ### Pervasiveness
-Oasis should be in the home in audio, video, haptics, etc. Oasis should be in the car. It should be on my computer, phone, tablet, and wearables wherever I am. But all
-good infrastructure is invisible, and Oasis should be invisible too, except when I need it.
+Molarity should be in the home in audio, video, haptics, etc. Molarity should be in the car. It should be on my computer, phone, tablet, and wearables wherever I am. But all
+good infrastructure is invisible, and Molarity should be invisible too, except when I need it.
 
 ## Wait, don't I know you?
 Maybe. I was an architect and developer on the original Microsoft Robotics Development Studio suite and I am still a
@@ -80,7 +93,7 @@ My main interest now is in home automation and lifestyle automation in a truly c
 
 ## Why C# ?
 The choice of C# for me was an easy one. I have deep experience with C# and more importantly, with Mono and Xamarin, it runs everywhere
-that I might care to have my Oasis services running.  That includes:
+that I might care to have my Molarity services running.  That includes:
 
 1. All modern versions and flavors of Windows 
   * Windows 7 and 8 desktop, server, and immersive apps
@@ -91,7 +104,7 @@ that I might care to have my Oasis services running.  That includes:
 1. IoT-scale devices like 
   * Raspberry Pi running Linux (Mono)
   * Raspberry Pi 2 running Windows 10
-  * and even STM32 chips via .Net Micro Framework for things like wearable devices
+  * and even SOC systems via .Net Micro Framework for things like wearable devices
 1. Mobile devices via Xamarin, including:
   * iOS
   * Android
