@@ -40,7 +40,6 @@ namespace Molarity.Hosting
         private static readonly IPAddress SsdpAddress = IPAddress.Parse(SsdpAddressString);
         private static readonly Random _random = new Random();
 
-        private readonly UdpClient _client = new UdpClient();
         private readonly Timer _notificationTimer = new Timer(60000);
         private readonly Dictionary<Guid, SsdpService> _services = new Dictionary<Guid, SsdpService>();
         private readonly ConcurrentQueue<Datagram> _messageQueue = new ConcurrentQueue<Datagram>();
@@ -53,12 +52,6 @@ namespace Molarity.Hosting
 
             _notificationTimer.Elapsed += NotificationTimerOnElapsed;
             _notificationTimer.Enabled = true;
-            _client.MulticastLoopback = false;
-            _client.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            _client.ExclusiveAddressUse = false;
-            _client.Client.Bind(new IPEndPoint(IPAddress.Any, SSDP_PORT));
-            _client.JoinMulticastGroup(SsdpAddress, 2);
-
             _processQueueTask = ProcessQueue(_ctsource.Token);
             Receive();
         }
@@ -79,7 +72,6 @@ namespace Molarity.Hosting
                     annIf.Client.DropMulticastGroup(SsdpAddress);
                 }
             }
-            _client.DropMulticastGroup(SsdpAddress);
             _notificationTimer.Dispose();
         }
 
@@ -115,7 +107,11 @@ namespace Molarity.Hosting
                             true);
                         if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
                         {
-                            var localEndpoint = new IPEndPoint(addr.Address, SSDP_PORT);
+#if __MonoCS__
+							var localEndpoint = new IPEndPoint(IPAddress.Any, SSDP_PORT);
+#else
+							var localEndpoint = new IPEndPoint(addr.Address, SSDP_PORT);
+#endif
                             annIf.Client.Client.Bind(localEndpoint);
                         }
                         else
@@ -126,6 +122,10 @@ namespace Molarity.Hosting
                         annIf.Client.JoinMulticastGroup(SsdpAddress, addr.Address);
                         Console.WriteLine("Adding UPnP announcement interface on " + annIf.Address);
                         _interfaces.Add(annIf);
+#if __MonoCS__
+						// Mono does not work with bound endpoints, so we use IPAddress.Any and just the first valid interface
+						break;
+#endif
                     }
                 }
             }
