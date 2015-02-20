@@ -3,7 +3,7 @@
 Molarity is a distributed services architecture for home/lifestyle automation.
 Molarity works on a wide variety of devices from IoT through cloud, including
 
-  * NETMF devices in general (and the Molecule devices in particular) 
+  * NETMF devices
   * Raspberry Pi (all versions)
   * Windows PCs, tablets and phones
   * iOS devices
