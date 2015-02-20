@@ -8,7 +8,7 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OasisHostingService
+namespace MolarityHostingService
 {
     public partial class Service1 : ServiceBase
     {

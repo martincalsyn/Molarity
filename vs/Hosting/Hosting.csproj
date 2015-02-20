@@ -7,7 +7,7 @@
     <ProjectGuid>{3F6D07B4-C851-4B51-9BDD-07234C9AAC94}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OasisAutomation.Hosting</RootNamespace>
+    <RootNamespace>Molarity.Hosting</RootNamespace>
     <AssemblyName>Hosting</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -69,6 +69,9 @@
     </Compile>
     <Compile Include="..\..\src\Hosting\AssemblyInfo.cs">
       <Link>Properties\AssemblyInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\..\src\Hosting\Datagram.cs">
+      <Link>Datagram.cs</Link>
     </Compile>
     <Compile Include="..\..\src\Hosting\Headers.cs">
       <Link>Headers.cs</Link>

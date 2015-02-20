@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OasisAutomation.Hosting;
+using Molarity.Hosting;
 
-namespace OasisAutomation.CommandLineHost
+namespace Molarity.CommandLineHost
 {
     class Program
     {

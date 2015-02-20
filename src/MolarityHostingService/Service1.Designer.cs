@@ -1,4 +1,4 @@
-﻿namespace OasisHostingService
+﻿namespace MolarityHostingService
 {
     partial class Service1
     {

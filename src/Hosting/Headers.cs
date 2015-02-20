@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace OasisAutomation.Hosting
+namespace Molarity.Hosting
 {
     class Headers : IDictionary<string,string>
     {

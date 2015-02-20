@@ -12,11 +12,16 @@ using System.Threading.Tasks;
 // On windows, be sure to open up access to the port
 //  netsh http add urlacl url=http://+:80/MyUri user=DOMAIN\user
 
-// Do this for newtonsoft:
-// sudo apt-get install libnewtonsoft-json-cil-dev monodoc-newtonsoft-json-manual
+// Do this one time for newtonsoft on Mono via nuget
+//sudo mozroots --import --machine --sync
+//$ sudo certmgr -ssl -m https://go.microsoft.com
+//$ sudo certmgr -ssl -m https://nugetgallery.blob.core.windows.net
+//$ sudo certmgr -ssl -m https://nuget.org// 
+// At first, I did this on Rpi, but nuget is better
+//sudo apt-get install libnewtonsoft-json-cil-dev monodoc-newtonsoft-json-manual
 using Newtonsoft.Json;
 
-namespace OasisAutomation.Hosting
+namespace Molarity.Hosting
 {
 
     class AnnouncementInterface
@@ -43,6 +48,11 @@ namespace OasisAutomation.Hosting
         private ServiceHost()
         {
             _ssdp = new SsdpHandler();
+            Guid id = Guid.NewGuid();
+            _ssdp.RegisterService(id, new Uri("http://192.168.1.122/Directory/upnp"), IPAddress.Parse("192.168.1.122"), 
+                "upnp:rootdevice",
+                "urn:molarity:directory",
+                "uuid:" + id.ToString());
         }
 
         ~ServiceHost()
