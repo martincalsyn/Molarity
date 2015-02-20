@@ -7,7 +7,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceHost", "ServiceHost\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hosting", "Hosting\Hosting.csproj", "{3F6D07B4-C851-4B51-9BDD-07234C9AAC94}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OasisHostingService", "OasisHostingService\OasisHostingService.csproj", "{D87EB144-1C8A-4DB8-99CF-EC2B9EE28C7C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MolarityHostingService", "MolarityHostingService\MolarityHostingService.csproj", "{D87EB144-1C8A-4DB8-99CF-EC2B9EE28C7C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{BE4AAF42-3513-4574-8538-629FE0528459}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

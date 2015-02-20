@@ -28,6 +28,7 @@ namespace OasisAutomation.Hosting
     }
     public class ServiceHost : IDisposable
     {
+        private SsdpHandler _ssdp;
         private HttpListener _httpListener;
         private int _udpPort = 7001;
         private int _httpPort = 7000;
@@ -41,6 +42,7 @@ namespace OasisAutomation.Hosting
 
         private ServiceHost()
         {
+            _ssdp = new SsdpHandler();
         }
 
         ~ServiceHost()
@@ -84,6 +86,7 @@ namespace OasisAutomation.Hosting
                     if (addr.Address.AddressFamily == AddressFamily.InterNetwork || addr.Address.AddressFamily == AddressFamily.InterNetworkV6)
                     {
                         if (!addr.IsDnsEligible
+                            || IPAddress.IsLoopback(addr.Address)
                             || addr.Address.IsIPv6LinkLocal
 #if !__MonoCS__
                             // This is not defined for Mono
