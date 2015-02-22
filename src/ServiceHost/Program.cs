@@ -13,9 +13,10 @@ namespace Molarity.CommandLineHost
         static void Main(string[] args)
         {
             _host = ServiceHost.Create().Result;
-            _host.Start();
+            _host.Run();
             Console.WriteLine("Press ENTER to stop the program");
             Console.ReadLine();
+            _host.Stop();
         }
     }
 }

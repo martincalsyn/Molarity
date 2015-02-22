@@ -49,7 +49,7 @@ namespace Molarity.Hosting
         private readonly Task _processQueueTask;
         private readonly List<AnnouncementInterface> _interfaces = new List<AnnouncementInterface>();
         private readonly Dictionary<Guid, PeerNode> _peers = new Dictionary<Guid, PeerNode>();
-
+        private bool _running = false;
         public SsdpHandler()
         {
             PopulateInterfaceList();
@@ -57,11 +57,47 @@ namespace Molarity.Hosting
             _notificationTimer.Elapsed += NotificationTimerOnElapsed;
             _notificationTimer.Enabled = true;
             _processQueueTask = ProcessQueue(_ctsource.Token);
-            Receive();
         }
 
         public void Dispose()
         {
+            Stop();
+        }
+
+        public void Run()
+        {
+            if (_running)
+                return;
+            _running = true;
+            Task.Run(() => RunTask(), _ctsource.Token);
+        }
+
+        private async Task RunTask()
+        {
+            try
+            {
+                var tasks = _interfaces.Select(annIf => annIf.ReceiveAsync()).ToList();
+                while (!_ctsource.IsCancellationRequested)
+                {
+                    var fired = await Task.WhenAny(tasks);
+                    tasks.Remove(fired);
+                    var result = fired.Result;
+                    ProcessReceivedMessage(result.Item1, result.Item2);
+                    var task = result.Item1.ReceiveAsync();
+                    tasks.Add(task);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        }
+
+        public void Stop()
+        {
+            if (!_running)
+                return;
+            _running = false;
+
             _notificationTimer.Enabled = false;
             // Request cancellation
             _ctsource.Cancel();
@@ -73,7 +109,14 @@ namespace Molarity.Hosting
             {
                 if (annIf.Client != null)
                 {
-                    annIf.Client.DropMulticastGroup(SsdpAddress);
+                    try
+                    {
+                        annIf.Client.DropMulticastGroup(SsdpAddress);
+                    }
+                    catch (SocketException)
+                    {
+                        // harmless and expected in some cases
+                    }
                 }
             }
             _notificationTimer.Dispose();
@@ -217,21 +260,7 @@ namespace Molarity.Hosting
                     );
             }
         }
-
-        private async void Receive()
-        {
-            var tasks = _interfaces.Select(annIf => annIf.ReceiveAsync()).ToList();
-            while (true)
-            {
-                var fired = await Task.WhenAny(tasks);
-                tasks.Remove(fired);
-                var result = fired.Result;
-                ProcessReceivedMessage(result.Item1, result.Item2);
-                var task = result.Item1.ReceiveAsync();
-                tasks.Add(task);
-            }
-        }
-
+        
         private async void ProcessReceivedMessage(AnnouncementInterface intf, UdpReceiveResult udpResult)
         {
             var remoteEp = udpResult.RemoteEndPoint;
@@ -310,6 +339,10 @@ namespace Molarity.Hosting
                     await Task.Delay(delay, ct);
                     if (ct.IsCancellationRequested)
                         break;
+                }
+                catch (TaskCanceledException)
+                {
+                    // expected during shutdown
                 }
                 catch (Exception)
                 {

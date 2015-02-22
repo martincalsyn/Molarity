@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.Remoting.Contexts;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -26,8 +27,9 @@ namespace Molarity.Hosting
     public class ServiceHost : IDisposable
     {
         private SsdpHandler _ssdp;
-        private HttpListener _httpListener;
+        private HttpHandler _http;
         private int _httpPort = 7000;
+        private bool _running = false;
         public static async Task<ServiceHost> Create()
         {
             var result = new ServiceHost();
@@ -50,28 +52,32 @@ namespace Molarity.Hosting
 
         public void Dispose()
         {
-            Close();
+            Stop();
         }
-        public void Close()
+        public void Run()
         {
-            if (_httpListener != null)
-            {
-                _httpListener.Stop();
-                _httpListener = null;
-            }
-        }
+            if (_running)
+                return;
+            _running = true;
 
-        public void Start()
-        {
             _ssdp = new SsdpHandler();
             Guid id = Guid.NewGuid();
-            _ssdp.RegisterService(id, "http://{0}:7000/Directory/upnp",
-                "urn:molarity:directory");
+            _ssdp.RegisterService(id, "http://{0}:7000/Directory/upnp", "urn:molarity:directory");
 
-            // Create the http channel
-            _httpListener = new HttpListener();
-            _httpListener.Prefixes.Add(string.Format("http://*:{0}/", _httpPort));
-            _httpListener.Start();
+            _http = new HttpHandler(_httpPort);
+
+            _ssdp.Run();
+            _http.Run();
+        }
+
+        public void Stop()
+        {
+            if (!_running)
+                return;
+            _running = false;
+
+            _ssdp.Stop();
+            _http.Stop();
         }
     }
 }
