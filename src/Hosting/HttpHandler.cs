@@ -93,7 +93,7 @@ namespace Molarity.Hosting
 
         private void ProcessRequest(HttpListenerContext ctx)
         {
-            string msg = string.Format("HTTP request : {0} {1}", ctx.Request.HttpMethod, ctx.Request.Url);
+            string msg = string.Format("HTTP request from {2} on {3} : {0} {1}", ctx.Request.HttpMethod, ctx.Request.Url, ctx.Request.RemoteEndPoint, ctx.Request.LocalEndPoint);
             Console.WriteLine(msg);
 
             var sb = new StringBuilder();
