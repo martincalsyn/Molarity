@@ -76,6 +76,9 @@
     <Compile Include="..\..\src\Hosting\Headers.cs">
       <Link>Headers.cs</Link>
     </Compile>
+    <Compile Include="..\..\src\Hosting\PeerNode.cs">
+      <Link>PeerNode.cs</Link>
+    </Compile>
     <Compile Include="..\..\src\Hosting\ServiceHost.cs">
       <Link>ServiceHost.cs</Link>
     </Compile>

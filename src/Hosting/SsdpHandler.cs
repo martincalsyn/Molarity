@@ -33,12 +33,14 @@ namespace Molarity.Hosting
         private const int DatagramsPerMessage = 2;
 
         private const string SsdpAddressString = "239.255.255.250";
+        private const string MolarityDirectorySignature = "urn:molarity:directory";
 
         private const int SSDP_PORT = 1900;
 
         private static readonly IPEndPoint SsdpEndpoint = new IPEndPoint(IPAddress.Parse(SsdpAddressString), SSDP_PORT);
         private static readonly IPAddress SsdpAddress = IPAddress.Parse(SsdpAddressString);
         private static readonly Random _random = new Random();
+        private static readonly TimeSpan DefaultCacheExpiry = TimeSpan.FromSeconds(600);
 
         private readonly Timer _notificationTimer = new Timer(60000);
         private readonly Dictionary<Guid, SsdpService> _services = new Dictionary<Guid, SsdpService>();
@@ -46,6 +48,8 @@ namespace Molarity.Hosting
         private readonly CancellationTokenSource _ctsource = new CancellationTokenSource();
         private readonly Task _processQueueTask;
         private readonly List<AnnouncementInterface> _interfaces = new List<AnnouncementInterface>();
+        private readonly Dictionary<Guid, PeerNode> _peers = new Dictionary<Guid, PeerNode>();
+
         public SsdpHandler()
         {
             PopulateInterfaceList();
@@ -159,9 +163,26 @@ namespace Molarity.Hosting
         }
         private void NotificationTimerOnElapsed(object sender, ElapsedEventArgs elapsedEventArgs)
         {
-            Console.WriteLine("Sending SSDP notifications");
+            Console.WriteLine("Sending UPnP notifications of our services");
             _notificationTimer.Interval = _random.Next(60000, 120000);
             NotifyAll();
+            CleanUp();
+        }
+
+        private void CleanUp()
+        {
+            lock (_peers)
+            {
+                var now = DateTime.UtcNow;
+                foreach (var peer in _peers.Values.ToArray())
+                {
+                    if (peer.Expiry < now)
+                    {
+                        Console.WriteLine("Removing expired peer {0} at {1}", peer, peer.Location);
+                        _peers.Remove(peer.Id);
+                    }
+                }
+            }
         }
 
         private void NotifyAll()
@@ -205,7 +226,6 @@ namespace Molarity.Hosting
                 var fired = await Task.WhenAny(tasks);
                 tasks.Remove(fired);
                 var result = fired.Result;
-                Console.WriteLine("Data received from " + result.Item2.RemoteEndPoint);
                 ProcessReceivedMessage(result.Item1, result.Item2);
                 var task = result.Item1.ReceiveAsync();
                 tasks.Add(task);
@@ -242,7 +262,6 @@ namespace Molarity.Hosting
                         var parts = line.Split(new[] {':'}, 2);
                         headers[parts[0]] = parts[1].Trim();
                     }
-                    Console.WriteLine("{0} - Datagram method: {1}", remoteEp, method);
                     if (method == "M-SEARCH")
                     {
                         RespondToSearch(intf, remoteEp, headers["st"]);
@@ -302,7 +321,6 @@ namespace Molarity.Hosting
 
         private void RespondToSearch(AnnouncementInterface intf, IPEndPoint ep, string searchTerm)
         {
-            Console.WriteLine("SSDP Search for {0} from {1}", searchTerm, ep);
             if (searchTerm == "ssdp:all")
             {
                 // make this into a wildcard matching all services
@@ -329,7 +347,83 @@ namespace Molarity.Hosting
 
         private void HandleNotify(AnnouncementInterface intf, IPEndPoint remoteEp, Headers headers)
         {
+            // Not one of ours?
+            if (headers["NT"] != MolarityDirectorySignature)
+                return;
+            var usnTokens = headers["USN"].Split(':');
+            if (usnTokens.Length < 2)
+                return;
+            if (usnTokens[0] != "uuid")
+                return;
+            Guid id;
+            if (!Guid.TryParse(usnTokens[1], out id))
+                return;
 
+            PeerNode peer;
+            if (headers["nts"] == "ssdp:alive")
+            {
+                lock (_peers)
+                {
+                    Uri location;
+                    if (!headers.ContainsKey("LOCATION"))
+                        return;
+                    if (!Uri.TryCreate(headers["LOCATION"], UriKind.Absolute, out location))
+                        return;
+
+                    if (!_peers.TryGetValue(id, out peer))
+                    {
+                        peer = new PeerNode(id, location);
+                        _peers.Add(id, peer);
+                        Console.WriteLine("Discovered new peer {0} at {1}", peer.Id, peer.Location);
+                    }
+                    else
+                    {
+                        // update last-seen timestamp
+                        peer.LastSeen = DateTime.UtcNow;
+                        peer.Location = location;
+                    }
+                }
+
+                bool expiryWasSet = false;
+                if (headers.ContainsKey("CACHE-CONTROL"))
+                {
+                    //TODO: set expiration time
+                    var ccTokens = headers["CACHE-CONTROL"].Split(',');
+                    foreach (var token in ccTokens)
+                    {
+                        var kvTokens = token.Split('=');
+                        if (kvTokens.Length > 1)
+                        {
+                            var left = kvTokens[0].Trim();
+                            var right = kvTokens[1].Trim();
+                            if (left.ToLowerInvariant() == "max-age")
+                            {
+                                int ageInSeconds;
+                                if (Int32.TryParse(right, out ageInSeconds))
+                                {
+                                    peer.Expiry = peer.LastSeen + TimeSpan.FromSeconds(ageInSeconds);
+                                    expiryWasSet = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!expiryWasSet)
+                {
+                    peer.Expiry = peer.LastSeen + DefaultCacheExpiry;
+                }
+            }
+            else if (headers["NTS"] == "ssdp:byebye")
+            {
+                lock (_peers)
+                {
+                    if (_peers.TryGetValue(id, out peer))
+                    {
+                        Console.WriteLine("Service {0} at {1} has signed off", id, _peers[id].Location);
+                        _peers.Remove(id);
+                    }
+                }
+            }
         }
 
         private void SendSearchResponse(AnnouncementInterface intf, IPEndPoint endpoint, SsdpService service, string serviceType)
@@ -348,9 +442,6 @@ namespace Molarity.Hosting
               String.Format("HTTP/1.1 200 OK\r\n{0}\r\n", headers.ToString()),
               false
               );
-            //InfoFormat(
-            //  "{2}, {1} - Responded to a {0} request", dev.Type, endpoint,
-            //  dev.Address);
         }
 
         private void SendDatagram(IPEndPoint endpoint, IPAddress address,
@@ -375,6 +466,7 @@ namespace Molarity.Hosting
                 return _sig;
             }
         }
+
         private static string GenerateSignature()
         {
             var os = Environment.OSVersion;

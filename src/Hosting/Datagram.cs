@@ -31,7 +31,7 @@ namespace Molarity.Hosting
                 try
                 {
                     var result = await client.SendAsync(msg, msg.Length, this.EndPoint);
-                    Console.WriteLine("Sent: {0}", this.Message);
+                    //Console.WriteLine("Sent: {0}", this.Message);
                 }
                 catch (Exception)
                 {
@@ -57,7 +57,6 @@ namespace Molarity.Hosting
                 //Error(ex);
             }
             ++SendCount;
-            Console.WriteLine("Send Count : {0}", SendCount);
         }
         public IPEndPoint EndPoint { get; private set; }
 
