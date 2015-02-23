@@ -68,6 +68,8 @@ namespace Molarity.Hosting
 
             _ssdp.Run();
             _http.Run();
+
+            _http.AddService("/Directory/upnp", new UpnpDeviceDefinitionService());
         }
 
         public void Stop()

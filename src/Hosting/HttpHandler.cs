@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Molarity.Services;
 
 namespace Molarity.Hosting
 {
@@ -16,6 +17,7 @@ namespace Molarity.Hosting
         private readonly int _httpPort;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private bool _running = false;
+        private HttpNodeInfo _rootNode = new HttpNodeInfo();
 
         public HttpHandler(int port)
         {
@@ -46,7 +48,7 @@ namespace Molarity.Hosting
                         var context = await _http.GetContextAsync();
                         try
                         {
-                            ProcessRequest(context);
+                            await ProcessRequest(context);
                         }
                         catch (Exception exc)
                         {
@@ -91,19 +93,104 @@ namespace Molarity.Hosting
             }
         }
 
-        private void ProcessRequest(HttpListenerContext ctx)
+        private async Task ProcessRequest(HttpListenerContext ctx)
         {
             string msg = string.Format("HTTP request from {2} on {3} : {0} {1}", ctx.Request.HttpMethod, ctx.Request.Url, ctx.Request.RemoteEndPoint, ctx.Request.LocalEndPoint);
             Console.WriteLine(msg);
 
-            var sb = new StringBuilder();
-            sb.Append("<html><body><h1>" + "Hi there" + "</h1>");
-            sb.Append("</body></html>");
+            var url = ctx.Request.Url;
+            var path = url.GetLeftPart(UriPartial.Path);
+            var prefix = url.GetLeftPart(UriPartial.Authority);
+            path = path.Remove(0, prefix.Length);
+            var urlTokens = path.Split('/');
+            HttpNodeInfo node;
+            lock (_rootNode)
+            {
+                node = FindServiceNode(urlTokens);
+            }
+            if (node != null && node.Service!=null)
+            {
+                try
+                {
+                    await node.Service.ProcessRequest(ctx);
+                }
+                catch (NotImplementedException)
+                {
+                    ctx.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+                    ctx.Response.AddHeader("Allow","GET PUT DELETE PATCH");
 
-            var data = Encoding.UTF8.GetBytes(sb.ToString());
-            ctx.Response.ContentLength64 = data.Length;
-            ctx.Response.OutputStream.Write(data, 0, data.Length);
+                    var sb = new StringBuilder();
+                    sb.Append("<html><body><h1>Method not allowed</h1>");
+                    sb.Append(string.Format("The requested http method '{0}' is not supported for Molarity services", ctx.Request.HttpMethod));
+                    sb.Append("</body></html>");
+
+                    var data = Encoding.UTF8.GetBytes(sb.ToString());
+                    ctx.Response.ContentLength64 = data.Length;
+                    ctx.Response.OutputStream.Write(data, 0, data.Length);
+                    ctx.Response.OutputStream.Close();
+                }
+                return;
+            }
+
+            ctx.Response.StatusCode = (int) HttpStatusCode.NotFound;
+
+            var sb404 = new StringBuilder();
+            sb404.Append("<html><body><h1>" + "404 Service not found" + "</h1>");
+            sb404.Append("The requested service or document could not be found");
+            sb404.Append("</body></html>");
+
+            var data404 = Encoding.UTF8.GetBytes(sb404.ToString());
+            ctx.Response.ContentLength64 = data404.Length;
+            ctx.Response.OutputStream.Write(data404, 0, data404.Length);
             ctx.Response.OutputStream.Close();
+        }
+
+        public void AddService(string path, IMolarityService service)
+        {
+            lock (_rootNode)
+            {
+                var urlTokens = path.Split('/');
+                var node = FindServiceNode(urlTokens, true);
+                if (node != null)
+                {
+                    node.Service = new MolarityService(service);
+                }
+            }
+            Console.WriteLine("Service added : {0}", path);
+        }
+
+        private HttpNodeInfo FindServiceNode(IEnumerable<string> urlTokens, bool fCreate = false)
+        {
+            if (urlTokens == null || !urlTokens.Any())
+                return _rootNode;
+
+            var tokens = new List<string>(urlTokens);
+
+            var node = _rootNode;
+            while (tokens.Count > 0)
+            {
+                var search = tokens[0].ToLowerInvariant();
+                if (string.IsNullOrEmpty(search))
+                {
+                    tokens.RemoveAt(0);
+                    continue;
+                }
+
+                if (node.Children.ContainsKey(search))
+                {
+                    node = node.Children[search];
+                }
+                else
+                {
+                    if (!fCreate)
+                        return null;
+                    var next = new HttpNodeInfo(search);
+                    node.Children.Add(search, next);
+                    node = next;
+                }
+                tokens.RemoveAt(0);
+            }
+            return node;
         }
 
     }

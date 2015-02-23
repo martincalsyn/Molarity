@@ -16,6 +16,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{BE4AAF
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DefaultServices", "DefaultServices\DefaultServices.csproj", "{62125992-F740-4D5F-AA66-C85017AE503E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceFramework", "ServiceFramework\ServiceFramework.csproj", "{213F69BA-51AA-458F-BEDD-2A2707724A1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,22 @@ Global
 		{D87EB144-1C8A-4DB8-99CF-EC2B9EE28C7C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D87EB144-1C8A-4DB8-99CF-EC2B9EE28C7C}.WinDebug|Any CPU.ActiveCfg = WinDebug|Any CPU
 		{D87EB144-1C8A-4DB8-99CF-EC2B9EE28C7C}.WinDebug|Any CPU.Build.0 = WinDebug|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.MonoDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.MonoDebug|Any CPU.Build.0 = Debug|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.WinDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62125992-F740-4D5F-AA66-C85017AE503E}.WinDebug|Any CPU.Build.0 = Debug|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.MonoDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.MonoDebug|Any CPU.Build.0 = Debug|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.WinDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{213F69BA-51AA-458F-BEDD-2A2707724A1B}.WinDebug|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
